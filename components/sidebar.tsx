@@ -1,38 +1,39 @@
 "use client"
-
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { LayoutDashboard, TrendingUp, Users, Settings, Plus, ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Plus, ChevronLeft, ChevronRight, Sparkles, Calendar, TrendingUp, Eye } from "lucide-react"
 
-interface Campaign {
+interface LaunchedCampaign {
   id: string
   name: string
-  status: "active" | "paused" | "completed"
-  performance: number
-  spend: string
+  thumbnail: string
+  status: "active" | "completed"
+  launchDate: Date
+  selectedAds: string[]
+  businessData: {
+    targetEngagement: string
+    budget: string
+    audience: string
+    themes: string[]
+  }
 }
 
 interface SidebarProps {
   isCollapsed: boolean
   onToggle: () => void
-  onCampaignSelect?: (id: string) => void
+  launchedCampaigns?: LaunchedCampaign[]
+  onCampaignSelect?: (campaignId: string) => void
 }
 
-export default function Sidebar({ isCollapsed, onToggle, onCampaignSelect }: SidebarProps) {
-  const [selectedCampaign, setSelectedCampaign] = useState<string>("1")
-
-  const campaigns: Campaign[] = [
-    { id: "1", name: "Q1 Brand Push", status: "active", performance: 94, spend: "$12.4K" },
-    { id: "2", name: "Product Launch", status: "active", performance: 87, spend: "$8.7K" },
-    { id: "3", name: "Holiday Sale", status: "completed", performance: 92, spend: "$15.2K" },
-    { id: "4", name: "Retargeting", status: "paused", performance: 76, spend: "$5.1K" },
-  ]
-
-  const handleCampaignClick = (campaignId: string) => {
-    setSelectedCampaign(campaignId)
-    onCampaignSelect?.(campaignId)
+export default function Sidebar({ isCollapsed, onToggle, launchedCampaigns = [], onCampaignSelect }: SidebarProps) {
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   }
 
   return (
@@ -77,94 +78,123 @@ export default function Sidebar({ isCollapsed, onToggle, onCampaignSelect }: Sid
         </div>
       </div>
 
-      {/* Navigation */}
-      <div className="relative p-6">
-        <nav className="space-y-3">
-          <Button
-            variant="ghost"
-            className={`w-full justify-start text-white hover:bg-gradient-to-r hover:from-pink-500/20 hover:to-purple-500/20 rounded-xl transition-all duration-300 ${isCollapsed ? "px-4" : ""} h-12`}
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            {!isCollapsed && <span className="ml-4 font-medium">Dashboard</span>}
-          </Button>
-          <Button
-            variant="ghost"
-            className={`w-full justify-start text-purple-300 hover:text-white hover:bg-gradient-to-r hover:from-pink-500/20 hover:to-purple-500/20 rounded-xl transition-all duration-300 ${isCollapsed ? "px-4" : ""} h-12`}
-          >
-            <TrendingUp className="h-5 w-5" />
-            {!isCollapsed && <span className="ml-4 font-medium">Analytics</span>}
-          </Button>
-          <Button
-            variant="ghost"
-            className={`w-full justify-start text-purple-300 hover:text-white hover:bg-gradient-to-r hover:from-pink-500/20 hover:to-purple-500/20 rounded-xl transition-all duration-300 ${isCollapsed ? "px-4" : ""} h-12`}
-          >
-            <Users className="h-5 w-5" />
-            {!isCollapsed && <span className="ml-4 font-medium">Audiences</span>}
-          </Button>
-          <Button
-            variant="ghost"
-            className={`w-full justify-start text-purple-300 hover:text-white hover:bg-gradient-to-r hover:from-pink-500/20 hover:to-purple-500/20 rounded-xl transition-all duration-300 ${isCollapsed ? "px-4" : ""} h-12`}
-          >
-            <Settings className="h-5 w-5" />
-            {!isCollapsed && <span className="ml-4 font-medium">Settings</span>}
-          </Button>
-        </nav>
+      {/* New Campaign Button */}
+      <div className="relative p-6 border-b border-purple-500/20">
+        <Button
+          size={isCollapsed ? "icon" : "lg"}
+          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-2xl shadow-lg shadow-purple-500/25 transition-all duration-300 hover:scale-105 w-full"
+        >
+          <Plus className="h-5 w-5" />
+          {!isCollapsed && <span className="ml-3 text-lg font-medium">New Campaign</span>}
+        </Button>
       </div>
 
-      {/* Campaigns */}
-      {!isCollapsed && (
-        <div className="flex-1 relative p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-white font-bold text-lg">Active Campaigns</h3>
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-xl shadow-lg shadow-purple-500/25 transition-all duration-300 hover:scale-105"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+      {/* Campaigns List */}
+      <div className="flex-1 relative">
+        {!isCollapsed && (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold text-lg">Campaigns</h3>
+              <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 rounded-full px-2 py-1 text-xs">
+                {launchedCampaigns.length}
+              </Badge>
+            </div>
 
-          <div className="space-y-4">
-            {campaigns.map((campaign) => (
-              <Card
-                key={campaign.id}
-                className={`p-4 cursor-pointer transition-all duration-300 border-purple-500/20 backdrop-blur-sm rounded-2xl hover:scale-105 ${
-                  selectedCampaign === campaign.id
-                    ? "bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-blue-500/20 border-pink-500/50 shadow-lg shadow-purple-500/25"
-                    : "bg-slate-800/30 hover:bg-slate-700/40"
-                }`}
-                onClick={() => handleCampaignClick(campaign.id)}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-white text-sm font-bold truncate">{campaign.name}</h4>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs font-medium rounded-full px-3 py-1 ${
-                      campaign.status === "active"
-                        ? "border-green-400/50 text-green-400 bg-green-400/10"
-                        : campaign.status === "paused"
-                          ? "border-yellow-400/50 text-yellow-400 bg-yellow-400/10"
-                          : "border-slate-400/50 text-slate-400 bg-slate-400/10"
-                    }`}
-                  >
-                    {campaign.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-purple-300 font-medium">Performance: {campaign.performance}%</span>
-                  <span className="text-pink-300 font-bold">{campaign.spend}</span>
-                </div>
-                <div className="mt-2 w-full bg-slate-700/50 rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-pink-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${campaign.performance}%` }}
-                  />
-                </div>
-              </Card>
-            ))}
+            <ScrollArea className="h-96">
+              <div className="space-y-4">
+                {launchedCampaigns.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700/50">
+                      <TrendingUp className="h-8 w-8 text-slate-500" />
+                    </div>
+                    <p className="text-slate-400 text-sm">No campaigns yet</p>
+                    <p className="text-slate-500 text-xs mt-1">Launch your first campaign to see it here</p>
+                  </div>
+                ) : (
+                  launchedCampaigns.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      onClick={() => onCampaignSelect?.(campaign.id)}
+                      className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 border border-slate-700/30 hover:border-purple-500/30 transition-all duration-300 cursor-pointer hover:bg-slate-700/50 group"
+                    >
+                      <div className="flex items-start space-x-4">
+                        {/* Campaign Thumbnail */}
+                        <div className="relative">
+                          <img
+                            src={campaign.thumbnail || "/placeholder.svg"}
+                            alt={campaign.name}
+                            className="w-12 h-12 object-cover rounded-xl border border-slate-600/50 group-hover:border-purple-500/30 transition-all duration-300"
+                          />
+                          <div
+                            className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border border-slate-950 ${
+                              campaign.status === "active" ? "bg-green-400 animate-pulse" : "bg-blue-400"
+                            }`}
+                          />
+                        </div>
+
+                        {/* Campaign Info */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-white font-medium text-sm truncate group-hover:text-purple-300 transition-colors">
+                            {campaign.name}
+                          </h4>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge
+                              className={`text-xs px-2 py-0.5 rounded-full ${
+                                campaign.status === "active"
+                                  ? "bg-green-500/20 text-green-400 border-green-500/30"
+                                  : "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                              }`}
+                            >
+                              {campaign.status}
+                            </Badge>
+                            <span className="text-slate-500 text-xs">{campaign.selectedAds.length} ads</span>
+                          </div>
+
+                          {/* Launch Date */}
+                          <div className="flex items-center space-x-1 mt-2">
+                            <Calendar className="h-3 w-3 text-slate-500" />
+                            <span className="text-slate-500 text-xs">{formatDate(campaign.launchDate)}</span>
+                          </div>
+
+                          {/* Quick Stats */}
+                          <div className="flex items-center space-x-3 mt-2">
+                            <div className="flex items-center space-x-1">
+                              <Eye className="h-3 w-3 text-slate-500" />
+                              <span className="text-slate-500 text-xs">2.4K</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <TrendingUp className="h-3 w-3 text-green-400" />
+                              <span className="text-green-400 text-xs">+12%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Campaign Preview on Hover */}
+                      <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="text-xs text-slate-400 truncate">{campaign.businessData.audience}</div>
+                        <div className="text-xs text-slate-500 mt-1">Budget: {campaign.businessData.budget}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Collapsed View - Show Campaign Count */}
+        {isCollapsed && launchedCampaigns.length > 0 && (
+          <div className="p-4">
+            <div className="bg-slate-800/50 rounded-2xl p-3 border border-slate-700/30 text-center">
+              <TrendingUp className="h-6 w-6 text-purple-400 mx-auto mb-2" />
+              <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 rounded-full text-xs">
+                {launchedCampaigns.length}
+              </Badge>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Demo Mode Indicator */}
       <div className="relative p-6 border-t border-purple-500/20">

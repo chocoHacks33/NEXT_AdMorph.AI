@@ -2,10 +2,12 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, CheckCircle, Loader2, Brain, Users, Palette, Target, Zap } from "lucide-react"
+import { Sparkles, CheckCircle, Loader2, Brain, Users, Palette, Target, Zap, Activity, TrendingUp } from "lucide-react"
+import { useGenerationUpdates, usePersonalizationUpdates, useAnalytics } from "@/lib/websocket-client"
+import { toast } from "sonner"
 
 interface BusinessData {
   targetEngagement: string
@@ -17,6 +19,7 @@ interface BusinessData {
 
 interface ProcessingPanelProps {
   businessData: BusinessData
+  onComplete?: (results: any) => void
 }
 
 interface Agent {
@@ -27,9 +30,24 @@ interface Agent {
   status: "pending" | "active" | "completed"
 }
 
-export default function ProcessingPanel({ businessData }: ProcessingPanelProps) {
+export default function ProcessingPanel({ businessData, onComplete }: ProcessingPanelProps) {
   const [currentAgentIndex, setCurrentAgentIndex] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [currentActivity, setCurrentActivity] = useState("Initializing AI agents...")
+  const [realTimeMetrics, setRealTimeMetrics] = useState({
+    variantsGenerated: 0,
+    segmentsAnalyzed: 0,
+    optimizationScore: 0
+  })
+  const [jobId, setJobId] = useState<string | null>(null)
+
+  // WebSocket connections
+  const { isConnected: generationConnected, lastMessage: generationMessage } = useGenerationUpdates()
+  const { isConnected: personalizationConnected, lastMessage: personalizationMessage } = usePersonalizationUpdates()
+  const { isConnected: analyticsConnected, lastMessage: analyticsMessage } = useAnalytics()
+
+  // Refs for animations
+  const metricsRef = useRef<HTMLDivElement>(null)
 
   const agents: Agent[] = [
     {
@@ -71,26 +89,119 @@ export default function ProcessingPanel({ businessData }: ProcessingPanelProps) 
 
   const [agentStates, setAgentStates] = useState<Agent[]>(agents)
 
+  // Handle generation updates
   useEffect(() => {
-    const agentInterval = setInterval(() => {
-      setCurrentAgentIndex((prev) => {
-        const next = (prev + 1) % agents.length
+    if (generationMessage) {
+      const message = generationMessage as any
 
-        // Update agent states
-        setAgentStates((currentAgents) =>
-          currentAgents.map((agent, index) => ({
-            ...agent,
-            status: index < prev ? "completed" : index === prev ? "active" : "pending",
-          })),
-        )
+      if (message.type === 'generation_update') {
+        const { job_id, status, progress: jobProgress, result } = message
 
-        setProgress((prev) => Math.min(prev + 20, 100))
-        return next
-      })
-    }, 1200)
+        if (job_id) setJobId(job_id)
 
-    return () => clearInterval(agentInterval)
-  }, [])
+        if (jobProgress !== undefined) {
+          setProgress(jobProgress)
+        }
+
+        if (status === 'completed' && result) {
+          toast.success('Ad generation completed!')
+          if (onComplete) onComplete(result)
+        } else if (status === 'failed') {
+          toast.error('Ad generation failed')
+        }
+
+        // Update activity based on progress
+        if (jobProgress < 20) {
+          setCurrentActivity("Analyzing business profile...")
+          setCurrentAgentIndex(0)
+        } else if (jobProgress < 40) {
+          setCurrentActivity("Identifying target demographics...")
+          setCurrentAgentIndex(1)
+        } else if (jobProgress < 60) {
+          setCurrentActivity("Generating creative variations...")
+          setCurrentAgentIndex(2)
+        } else if (jobProgress < 80) {
+          setCurrentActivity("Optimizing for performance...")
+          setCurrentAgentIndex(3)
+        } else if (jobProgress < 100) {
+          setCurrentActivity("Finalizing campaign assets...")
+          setCurrentAgentIndex(4)
+        } else {
+          setCurrentActivity("Campaign generation complete!")
+        }
+      }
+    }
+  }, [generationMessage, onComplete])
+
+  // Handle personalization updates
+  useEffect(() => {
+    if (personalizationMessage) {
+      const message = personalizationMessage as any
+
+      if (message.type === 'personalization_update') {
+        const { progress: jobProgress, result } = message
+
+        if (result) {
+          setRealTimeMetrics(prev => ({
+            ...prev,
+            variantsGenerated: result.variants_count || prev.variantsGenerated,
+            segmentsAnalyzed: result.segments_analyzed || prev.segmentsAnalyzed
+          }))
+        }
+      }
+    }
+  }, [personalizationMessage])
+
+  // Handle analytics updates
+  useEffect(() => {
+    if (analyticsMessage) {
+      const message = analyticsMessage as any
+
+      if (message.type === 'analytics_update') {
+        const { data } = message
+
+        if (data) {
+          setRealTimeMetrics(prev => ({
+            ...prev,
+            optimizationScore: Math.round((data.roi || 0) * 10)
+          }))
+        }
+      }
+    }
+  }, [analyticsMessage])
+
+  // Update agent states based on progress
+  useEffect(() => {
+    setAgentStates(agents.map((agent, index) => ({
+      ...agent,
+      status: index < currentAgentIndex ? "completed" :
+              index === currentAgentIndex ? "active" : "pending"
+    })))
+  }, [currentAgentIndex])
+
+  // Connection status notifications
+  useEffect(() => {
+    if (generationConnected && personalizationConnected && analyticsConnected) {
+      toast.success('Real-time processing connected')
+    }
+  }, [generationConnected, personalizationConnected, analyticsConnected])
+
+  // Simulate some initial progress if no real updates
+  useEffect(() => {
+    if (!jobId) {
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval)
+            return 100
+          }
+          return prev + 2
+        })
+      }, 200)
+
+      return () => clearInterval(interval)
+    }
+  }, [jobId])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative overflow-hidden">
@@ -127,62 +238,68 @@ export default function ProcessingPanel({ businessData }: ProcessingPanelProps) 
         {/* Enhanced Agent Workflow Nodes */}
         <div className="mb-20">
           <div className="flex justify-center">
-            <div className="flex items-center space-x-6 max-w-5xl overflow-x-auto pb-4">
-              {agentStates.map((agent, i) => (
-                <div key={agent.id} className="flex flex-col items-center min-w-0 relative">
-                  {/* Enhanced Connection Line */}
-                  {i > 0 && (
+            <div className="relative max-w-5xl w-full">
+              {/* Connection Lines */}
+              <div className="absolute top-10 left-0 right-0 h-1 flex items-center justify-between px-10">
+                {agentStates.slice(0, -1).map((agent, i) => (
+                  <div
+                    key={`line-${i}`}
+                    className={`
+              h-1 rounded-full transition-all duration-500 flex-1 mx-10
+              ${
+                agent.status === "completed"
+                  ? "bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 shadow-lg shadow-purple-500/25"
+                  : "bg-slate-700"
+              }
+            `}
+                  />
+                ))}
+              </div>
+
+              {/* Nodes Grid - Perfect Alignment */}
+              <div className="grid grid-cols-5 gap-8 items-start">
+                {agentStates.map((agent, i) => (
+                  <div key={agent.id} className="flex flex-col items-center">
+                    {/* Enhanced Agent Node */}
                     <div
                       className={`
-                      w-16 h-1 mb-8 -ml-20 mt-8 rounded-full transition-all duration-500
-                      ${
-                        agentStates[i - 1].status === "completed"
-                          ? "bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 shadow-lg shadow-purple-500/25"
-                          : "bg-slate-700"
-                      }
-                    `}
-                    />
-                  )}
-
-                  {/* Enhanced Agent Node */}
-                  <div
-                    className={`
-                    w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-500 mb-4 shadow-2xl
-                    ${
-                      agent.status === "completed"
-                        ? "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 text-white scale-110 shadow-green-500/25"
-                        : agent.status === "active"
-                          ? "bg-gradient-to-r from-pink-500 via-purple-600 to-blue-600 text-white animate-pulse scale-110 shadow-purple-500/25"
-                          : "bg-slate-800/50 text-slate-500 backdrop-blur-sm border border-slate-700/50"
-                    }
-                  `}
-                  >
-                    {agent.status === "completed" ? (
-                      <CheckCircle className="h-8 w-8" />
-                    ) : agent.status === "active" ? (
-                      <Loader2 className="h-8 w-8 animate-spin" />
-                    ) : (
-                      agent.icon
-                    )}
-                  </div>
-
-                  {/* Enhanced Agent Info */}
-                  <div className="text-center max-w-36">
-                    <p
-                      className={`text-base font-bold mb-2 ${
-                        agent.status === "active"
-                          ? "text-pink-400"
-                          : agent.status === "completed"
-                            ? "text-green-400"
-                            : "text-slate-500"
-                      }`}
+                w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-500 mb-4 shadow-2xl
+                ${
+                  agent.status === "completed"
+                    ? "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 text-white scale-110 shadow-green-500/25"
+                    : agent.status === "active"
+                      ? "bg-gradient-to-r from-pink-500 via-purple-600 to-blue-600 text-white animate-pulse scale-110 shadow-purple-500/25"
+                      : "bg-slate-800/50 text-slate-500 backdrop-blur-sm border border-slate-700/50"
+                }
+              `}
                     >
-                      {agent.name}
-                    </p>
-                    <p className="text-xs text-slate-400 leading-tight">{agent.description}</p>
+                      {agent.status === "completed" ? (
+                        <CheckCircle className="h-8 w-8" />
+                      ) : agent.status === "active" ? (
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      ) : (
+                        agent.icon
+                      )}
+                    </div>
+
+                    {/* Enhanced Agent Info */}
+                    <div className="text-center max-w-36">
+                      <p
+                        className={`text-base font-bold mb-2 ${
+                          agent.status === "active"
+                            ? "text-pink-400"
+                            : agent.status === "completed"
+                              ? "text-green-400"
+                              : "text-slate-500"
+                        }`}
+                      >
+                        {agent.name}
+                      </p>
+                      <p className="text-xs text-slate-400 leading-tight">{agent.description}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -205,7 +322,40 @@ export default function ProcessingPanel({ businessData }: ProcessingPanelProps) 
                 {agentStates[currentAgentIndex]?.name} is working...
               </h2>
 
-              <p className="text-xl text-purple-300 mb-10 font-medium">{agentStates[currentAgentIndex]?.description}</p>
+              <p className="text-xl text-purple-300 mb-6 font-medium">{agentStates[currentAgentIndex]?.description}</p>
+
+              {/* Real-time Metrics */}
+              <div ref={metricsRef} className="grid grid-cols-3 gap-6 mb-10">
+                <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-4 border border-slate-700/50">
+                  <div className="flex items-center justify-center mb-2">
+                    <Activity className="h-5 w-5 text-green-400 mr-2" />
+                    <span className="text-sm font-bold text-green-400">VARIANTS</span>
+                  </div>
+                  <div className="text-2xl font-bold text-white text-center">
+                    {realTimeMetrics.variantsGenerated}
+                  </div>
+                </div>
+
+                <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-4 border border-slate-700/50">
+                  <div className="flex items-center justify-center mb-2">
+                    <Users className="h-5 w-5 text-blue-400 mr-2" />
+                    <span className="text-sm font-bold text-blue-400">SEGMENTS</span>
+                  </div>
+                  <div className="text-2xl font-bold text-white text-center">
+                    {realTimeMetrics.segmentsAnalyzed}
+                  </div>
+                </div>
+
+                <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-4 border border-slate-700/50">
+                  <div className="flex items-center justify-center mb-2">
+                    <TrendingUp className="h-5 w-5 text-purple-400 mr-2" />
+                    <span className="text-sm font-bold text-purple-400">SCORE</span>
+                  </div>
+                  <div className="text-2xl font-bold text-white text-center">
+                    {realTimeMetrics.optimizationScore}%
+                  </div>
+                </div>
+              </div>
 
               {/* Enhanced Progress Bar */}
               <div className="mb-10">
@@ -226,7 +376,23 @@ export default function ProcessingPanel({ businessData }: ProcessingPanelProps) 
                   <div className="w-3 h-3 bg-pink-500 rounded-full animate-ping"></div>
                   <div className="absolute inset-0 w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
                 </div>
-                <p className="text-lg font-medium">Analyzing {businessData.audience.toLowerCase()} segments...</p>
+                <p className="text-lg font-medium">{currentActivity}</p>
+              </div>
+
+              {/* Connection Status */}
+              <div className="flex items-center justify-center space-x-6 mt-6">
+                <div className={`flex items-center space-x-2 ${generationConnected ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className={`w-2 h-2 rounded-full ${generationConnected ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
+                  <span className="text-sm">Generation</span>
+                </div>
+                <div className={`flex items-center space-x-2 ${personalizationConnected ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className={`w-2 h-2 rounded-full ${personalizationConnected ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
+                  <span className="text-sm">Personalization</span>
+                </div>
+                <div className={`flex items-center space-x-2 ${analyticsConnected ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className={`w-2 h-2 rounded-full ${analyticsConnected ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
+                  <span className="text-sm">Analytics</span>
+                </div>
               </div>
             </div>
           </Card>

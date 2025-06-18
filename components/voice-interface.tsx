@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Mic, MicOff, Upload, SkipBackIcon as Skip, ArrowRight, CheckCircle, Loader2, Sparkles } from "lucide-react"
+import { Mic, MicOff, Upload, SkipBackIcon as Skip, ArrowRight, CheckCircle, Loader2, Sparkles, Volume2 } from "lucide-react"
+import { useVoiceProcessing } from "@/lib/websocket-client"
+import { toast } from "sonner"
 
 interface BusinessData {
   targetEngagement: string
@@ -37,6 +39,17 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
     themes: [],
   })
 
+  // WebSocket connection for voice processing
+  const sessionId = useRef(`voice-${Date.now()}`).current
+  const { isConnected, lastMessage, sendMessage } = useVoiceProcessing(sessionId)
+
+  // Audio recording refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([
     { id: "1", name: "Requirements", status: "pending" },
     { id: "2", name: "Audience", status: "pending" },
@@ -69,19 +82,45 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
     return Array.from({ length: 20 }, () => Math.random() * 40 + 5)
   }
 
-  // Start listening
-  const startListening = () => {
-    setVoiceState("listening")
-    setCurrentTranscript("")
+  // Real audio recording functionality
+  const startListening = async () => {
+    try {
+      setVoiceState("listening")
+      setCurrentTranscript("")
 
-    const interval = setInterval(() => {
-      setAudioLevels(generateWaveform())
-    }, 150)
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
-    setTimeout(() => {
-      setVoiceState("processing")
-      clearInterval(interval)
-      setAudioLevels(new Array(20).fill(5))
+      // Setup audio context for visualization
+      audioContextRef.current = new AudioContext()
+      const source = audioContextRef.current.createMediaStreamSource(stream)
+      analyserRef.current = audioContextRef.current.createAnalyser()
+      analyserRef.current.fftSize = 256
+      source.connect(analyserRef.current)
+
+      // Start visualization
+      visualizeAudio()
+
+      // Setup media recorder
+      audioChunksRef.current = []
+      mediaRecorderRef.current = new MediaRecorder(stream)
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+        await processAudioBlob(audioBlob)
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      // Start recording
+      mediaRecorderRef.current.start()
 
       // Update agent step
       setAgentSteps((prev) =>
@@ -91,20 +130,75 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
         })),
       )
 
-      setTimeout(() => {
-        const mockResponses = [
-          "Increase click-through rate by 25%",
-          "$8,000 per month",
-          "Young professionals aged 25-35",
-          "Modern, professional tone",
-          "Yes, let's generate!",
-        ]
+    } catch (error) {
+      console.error('Error accessing microphone:', error)
+      toast.error('Could not access microphone. Please check permissions.')
+      setVoiceState("idle")
+    }
+  }
 
-        const response = mockResponses[currentStep] || "Ready"
-        setCurrentTranscript(response)
-        handleVoiceInput(response)
-      }, 1500)
-    }, 3000)
+  // Audio visualization
+  const visualizeAudio = () => {
+    if (!analyserRef.current) return
+
+    const bufferLength = analyserRef.current.frequencyBinCount
+    const dataArray = new Uint8Array(bufferLength)
+
+    const animate = () => {
+      if (voiceState !== "listening") return
+
+      analyserRef.current!.getByteFrequencyData(dataArray)
+
+      // Convert frequency data to visual levels
+      const levels = []
+      const step = Math.floor(bufferLength / 20)
+
+      for (let i = 0; i < 20; i++) {
+        const start = i * step
+        const end = start + step
+        let sum = 0
+
+        for (let j = start; j < end && j < bufferLength; j++) {
+          sum += dataArray[j]
+        }
+
+        const average = sum / step
+        levels.push(Math.max(5, (average / 255) * 60))
+      }
+
+      setAudioLevels(levels)
+      animationFrameRef.current = requestAnimationFrame(animate)
+    }
+
+    animate()
+  }
+
+  // Process recorded audio
+  const processAudioBlob = async (audioBlob: Blob) => {
+    setVoiceState("processing")
+
+    try {
+      // Convert blob to base64
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const base64Audio = reader.result as string
+        const base64Data = base64Audio.split(',')[1] // Remove data:audio/wav;base64, prefix
+
+        // Send to backend via WebSocket
+        sendMessage({
+          type: 'voice_transcription',
+          audio_data: base64Data,
+          step: currentStep,
+          question: questions[currentStep]
+        })
+      }
+      reader.readAsDataURL(audioBlob)
+
+    } catch (error) {
+      console.error('Error processing audio:', error)
+      toast.error('Error processing audio. Please try again.')
+      setVoiceState("idle")
+    }
   }
 
   const handleVoiceInput = (transcript: string) => {
@@ -147,9 +241,51 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
   }
 
   const stopListening = () => {
-    setVoiceState("idle")
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+    }
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close()
+    }
+
     setAudioLevels(new Array(20).fill(5))
   }
+
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (lastMessage) {
+      const message = lastMessage as any
+
+      if (message.type === 'voice_transcription_result') {
+        const transcript = message.data?.transcription || ''
+        setCurrentTranscript(transcript)
+
+        if (transcript) {
+          handleVoiceInput(transcript)
+        } else {
+          toast.error('Could not understand audio. Please try again.')
+          setVoiceState("idle")
+        }
+      } else if (message.type === 'voice_error') {
+        toast.error(message.data?.error || 'Voice processing error')
+        setVoiceState("idle")
+      }
+    }
+  }, [lastMessage])
+
+  // Connection status
+  useEffect(() => {
+    if (isConnected) {
+      toast.success('Voice system connected')
+    } else {
+      toast.error('Voice system disconnected')
+    }
+  }, [isConnected])
 
   useEffect(() => {
     setAudioLevels(new Array(20).fill(5))
@@ -196,7 +332,7 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
         {/* Step-by-step at the top */}
         <div className="mb-20">
           <div className="flex justify-center">
-            <div className="flex items-center space-x-8">
+            <div className="grid grid-cols-5 gap-8 max-w-2xl w-full">
               {agentSteps.map((step, index) => (
                 <div key={step.id} className="flex flex-col items-center">
                   <div
@@ -216,7 +352,7 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
                       <span className="text-sm font-bold">{index + 1}</span>
                     )}
                   </div>
-                  <p className="text-sm text-slate-400 mt-3 font-medium">{step.name}</p>
+                  <p className="text-sm text-slate-400 mt-3 font-medium text-center">{step.name}</p>
                 </div>
               ))}
             </div>
