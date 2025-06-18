@@ -10,6 +10,7 @@ import os
 from typing import Dict, Any
 
 from .routes import ads_router, business_router, demographics_router, campaigns_router, agents_router
+from .routes.products import router as products_router
 from .websockets import router as websocket_router
 from ..config.settings import get_settings
 
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(ads_router, prefix="/api/ads", tags=["ads"])
     app.include_router(campaigns_router, prefix="/api/campaigns", tags=["campaigns"])
     app.include_router(agents_router, prefix="/api/agents", tags=["agents"])
+    app.include_router(products_router)  # Products router has its own prefix
     app.include_router(websocket_router, prefix="/ws")
     
     # Global exception handler
