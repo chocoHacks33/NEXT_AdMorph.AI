@@ -1,0 +1,36 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - '# Install Python dependencies'
+        - python3 -m pip install --upgrade pip
+        - python3 -m pip install -r requirements.txt
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install --legacy-peer-deps
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
+test:
+  phases:
+    preTest:
+      commands:
+        - npm install --legacy-peer-deps
+    test:
+      commands:
+        - npm run test
+  artifacts:
+    baseDirectory: coverage
+    files:
+      - '**/*' 
