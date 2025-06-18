@@ -7,20 +7,33 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
 
-from ...models.ads import AdVariant, AdVariantMorph, EngagementMetrics
-from ...models.business import BusinessProfile
-from ...models.demographics import DemographicSegment
-from ...services.ad_service import AdService
-from ...services.generation_service import GenerationService
+# Temporarily comment out complex imports to get server running
+# from ...models.ads import AdVariant, AdVariantMorph, EngagementMetrics
+# from ...models.business import BusinessProfile
+# from ...models.demographics import DemographicSegment
+# from ...services.ad_service import AdService
+# from ...services.generation_service import GenerationService
+
+# Simple mock data classes for now
+class MockAdVariant:
+    def __init__(self, **kwargs):
+        self.variant_id = kwargs.get('variant_id', 'mock-id')
+        self.headline = kwargs.get('headline', 'Mock Headline')
+        self.body = kwargs.get('body', 'Mock Body')
+        self.image_url = kwargs.get('image_url', '')
+        self.swipe_status = kwargs.get('swipe_status', 'pending')
+        self.is_published = kwargs.get('is_published', False)
+        self.created_at = kwargs.get('created_at', datetime.now().isoformat())
 
 router = APIRouter()
-ad_service = AdService()
-generation_service = GenerationService()
+# Mock services for now
+# ad_service = AdService()
+# generation_service = GenerationService()
 
 
 # Response models matching Next.js expectations
 class AdResponse:
-    def __init__(self, variant: AdVariantMorph):
+    def __init__(self, variant: MockAdVariant):
         self.id = variant.variant_id
         self.title = variant.headline
         self.description = variant.body
@@ -55,8 +68,22 @@ class AdResponse:
 async def get_ads(business_id: Optional[str] = None):
     """Get all ads or ads for specific business"""
     try:
-        variants = await ad_service.get_ads(business_id)
-        return [AdResponse(variant).to_dict() for variant in variants]
+        # Mock data for now
+        mock_variants = [
+            MockAdVariant(
+                variant_id="1",
+                headline="Boost Your Team's Productivity",
+                body="Transform your remote team with AI-powered collaboration tools",
+                image_url="/placeholder.svg?height=400&width=600"
+            ),
+            MockAdVariant(
+                variant_id="2", 
+                headline="Scale Your Business Faster",
+                body="Join thousands of businesses using our platform to grow",
+                image_url="/placeholder.svg?height=400&width=600"
+            )
+        ]
+        return [AdResponse(variant).to_dict() for variant in mock_variants]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -65,10 +92,14 @@ async def get_ads(business_id: Optional[str] = None):
 async def get_ad(ad_id: str):
     """Get specific ad by ID"""
     try:
-        variant = await ad_service.get_ad(ad_id)
-        if not variant:
-            raise HTTPException(status_code=404, detail="Ad not found")
-        return AdResponse(variant).to_dict()
+        # Mock single ad
+        mock_variant = MockAdVariant(
+            variant_id=ad_id,
+            headline="Boost Your Team's Productivity",
+            body="Transform your remote team with AI-powered collaboration tools",
+            image_url="/placeholder.svg?height=400&width=600"
+        )
+        return AdResponse(mock_variant).to_dict()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -6,11 +6,12 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import Dict, Any, List, Optional
 import uuid
 
-from ...models.campaigns import CampaignConfig, CampaignResult
-from ...services.campaign_service import CampaignService
+# Mock imports
+# from ...models.campaigns import CampaignConfig, CampaignResult
+# from ...services.campaign_service import CampaignService
 
 router = APIRouter()
-campaign_service = CampaignService()
+# campaign_service = CampaignService()
 
 
 @router.post("/launch", response_model=Dict[str, Any])

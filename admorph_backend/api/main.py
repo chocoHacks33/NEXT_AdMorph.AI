@@ -9,9 +9,16 @@ import uvicorn
 import os
 from typing import Dict, Any
 
-from .routes import ads_router, business_router, demographics_router, campaigns_router, agents_router
-from .websockets import router as websocket_router
+from .routes import router as api_router
 from ..config.settings import get_settings
+
+# Try to import websockets router
+try:
+    from .websockets import router as websocket_router
+    websocket_available = True
+except ImportError as e:
+    print(f"Warning: WebSocket router not available: {e}")
+    websocket_available = False
 
 
 def create_app() -> FastAPI:
@@ -36,13 +43,12 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     
-    # Include routers
-    app.include_router(business_router, prefix="/api/business", tags=["business"])
-    app.include_router(demographics_router, prefix="/api/demographics", tags=["demographics"])
-    app.include_router(ads_router, prefix="/api/ads", tags=["ads"])
-    app.include_router(campaigns_router, prefix="/api/campaigns", tags=["campaigns"])
-    app.include_router(agents_router, prefix="/api/agents", tags=["agents"])
-    app.include_router(websocket_router, prefix="/ws")
+    # Include main API router
+    app.include_router(api_router, prefix="/api")
+    
+    # Include WebSocket router if available
+    if websocket_available:
+        app.include_router(websocket_router, prefix="/ws")
     
     # Global exception handler
     @app.exception_handler(Exception)

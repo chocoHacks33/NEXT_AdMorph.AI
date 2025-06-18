@@ -6,11 +6,12 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import Dict, Any, List
 import uuid
 
-from ...models.demographics import DemographicSegment, SegmentAnalysis
-from ...services.demographics_service import DemographicsService
+# Temporarily mock imports
+# from ...models.demographics import DemographicSegment, SegmentAnalysis
+# from ...services.demographics_service import DemographicsService
 
 router = APIRouter()
-demographics_service = DemographicsService()
+# demographics_service = DemographicsService()
 
 
 @router.post("/analyze", response_model=Dict[str, Any])

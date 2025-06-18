@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:3001"]
     
     # OpenAI configuration
-    openai_api_key: str
+    openai_api_key: str = "temp-key"  # Set default for now
     openai_model: str = "gpt-4"
     openai_max_tokens: int = 2000
     openai_temperature: float = 0.7
@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     enable_metrics: bool = True
     metrics_port: int = 9090
     log_format: str = "json"
+    
+    # Additional fields from .env
+    debug: Optional[bool] = True
+    speech_api_key: Optional[str] = None
+    voice_model: Optional[str] = "whisper-1"
+    secret_key: Optional[str] = None
+    jwt_secret: Optional[str] = None
     
     @validator("allowed_origins", pre=True)
     def parse_cors_origins(cls, v):
@@ -122,23 +129,9 @@ class Settings(BaseSettings):
         ])
     
     class Config:
-        env_file = ".env"
+        env_file = "../.env"  # Look for .env in project root
         env_file_encoding = "utf-8"
         case_sensitive = False
-        
-        # Environment variable prefixes
-        env_prefix = "ADMORPH_"
-        
-        # Field aliases for common environment variable names
-        fields = {
-            "openai_api_key": {"env": ["OPENAI_API_KEY", "ADMORPH_OPENAI_API_KEY"]},
-            "meta_access_token": {"env": ["META_ACCESS_TOKEN", "ADMORPH_META_ACCESS_TOKEN"]},
-            "meta_app_id": {"env": ["META_APP_ID", "ADMORPH_META_APP_ID"]},
-            "meta_app_secret": {"env": ["META_APP_SECRET", "ADMORPH_META_APP_SECRET"]},
-            "meta_ad_account_id": {"env": ["META_AD_ACCOUNT_ID", "ADMORPH_META_AD_ACCOUNT_ID"]},
-            "database_url": {"env": ["DATABASE_URL", "ADMORPH_DATABASE_URL"]},
-            "redis_url": {"env": ["REDIS_URL", "ADMORPH_REDIS_URL"]}
-        }
 
 
 @lru_cache()

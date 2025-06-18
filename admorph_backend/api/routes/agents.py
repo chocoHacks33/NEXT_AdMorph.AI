@@ -7,12 +7,13 @@ from typing import Dict, Any, Optional
 import uuid
 from datetime import datetime
 
-from ...services.agent_service import AgentService
-from ...services.voice_service import VoiceService
+# Mock imports
+# from ...services.agent_service import AgentService
+# from ...services.voice_service import VoiceService
 
 router = APIRouter()
-agent_service = AgentService()
-voice_service = VoiceService()
+# agent_service = AgentService()
+# voice_service = VoiceService()
 
 
 @router.post("/chat", response_model=Dict[str, Any])

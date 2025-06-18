@@ -7,11 +7,12 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import uuid
 
-from ...models.business import BusinessProfile, BusinessInsights
-from ...services.business_service import BusinessService
+# Temporarily use mock imports
+# from ...models.business import BusinessProfile, BusinessInsights
+# from ...services.business_service import BusinessService
 
 router = APIRouter()
-business_service = BusinessService()
+# business_service = BusinessService()
 
 
 @router.post("/profile", response_model=Dict[str, Any])
