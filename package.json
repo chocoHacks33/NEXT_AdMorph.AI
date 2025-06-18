@@ -1,12 +1,20 @@
 {
-  "name": "my-v0-project",
+  "name": "admorph-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "build:production": "NODE_ENV=production next build",
+    "start:production": "NODE_ENV=production next start",
+    "docker:build": "docker build -t admorph-frontend .",
+    "docker:run": "docker run -p 3000:3000 admorph-frontend",
+    "docker:compose": "docker-compose up --build",
+    "export": "next export",
+    "analyze": "ANALYZE=true npm run build",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
