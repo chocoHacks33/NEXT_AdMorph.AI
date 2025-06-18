@@ -1,8 +1,44 @@
-# AdMorph.AI Project .gitignore
+# AdMorph.AI Full-Stack Project .gitignore
 
-# Target repo (separate project)
-target_repo/
+# === Frontend (Next.js) ===
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
 
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env*.local
+.env.production
+.env.staging
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# === Backend (Python) ===
 # Python
 __pycache__/
 *.py[cod]
@@ -32,6 +68,19 @@ env/
 ENV/
 .venv/
 
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# === Shared ===
 # Environment variables
 .env
 .env.local
@@ -60,52 +109,22 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# Dependency directories
-node_modules/
-
-# Optional npm cache directory
-.npm
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
 # Docker
-.dockerignore
+Dockerfile.local
+docker-compose.override.yml
 
-# Uploads and temporary files
-uploads/
-temp/
-tmp/
+# AWS
+.aws/
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Uploads and temporary files
+uploads/
+temp/
+tmp/
 
-# pytest
-.pytest_cache/
-.coverage
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# Target repo (separate project)
+target_repo/
