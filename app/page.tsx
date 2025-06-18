@@ -9,8 +9,10 @@ import Sidebar from "@/components/sidebar"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Sparkles } from "lucide-react"
 import UploadInterface from "@/components/upload-interface"
+import PerformanceTrackingDashboard from "@/components/performance-tracking-dashboard"
 
-type FlowStep = "chat" | "upload" | "processing" | "gallery" | "performance" | "final"
+// Add a new step for performance tracking
+type FlowStep = "chat" | "upload" | "processing" | "gallery" | "performance" | "tracking" | "final"
 
 interface BusinessData {
   targetEngagement: string
@@ -31,6 +33,17 @@ export default function AdMorphApp() {
   const [selectedAds, setSelectedAds] = useState<string[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedAdForPerformance, setSelectedAdForPerformance] = useState<string | null>(null)
+  const [launchedCampaigns, setLaunchedCampaigns] = useState<
+    Array<{
+      id: string
+      name: string
+      thumbnail: string
+      status: "active" | "completed"
+      launchDate: Date
+      selectedAds: string[]
+      businessData: BusinessData
+    }>
+  >([])
 
   const handleChatComplete = (data: BusinessData) => {
     setBusinessData(data)
@@ -48,9 +61,10 @@ export default function AdMorphApp() {
     }, 6000)
   }
 
+  // In the handleAdSelection function, change the flow to go to tracking instead of final
   const handleAdSelection = (adIds: string[]) => {
     setSelectedAds(adIds)
-    setCurrentStep("final")
+    setCurrentStep("tracking") // Changed from "final" to "tracking"
   }
 
   const handleAdPerformanceView = (adId: string) => {
@@ -70,6 +84,23 @@ export default function AdMorphApp() {
     setSelectedAdForPerformance(null)
   }
 
+  // Add a new handler for when tracking is complete
+  const handleTrackingComplete = () => {
+    // Add campaign to launched campaigns
+    const newCampaign = {
+      id: Date.now().toString(),
+      name: `${businessData.audience.split(" ").slice(0, 2).join(" ")} Campaign`,
+      thumbnail: "/placeholder.svg?height=60&width=60&text=Campaign",
+      status: "completed" as const,
+      launchDate: new Date(),
+      selectedAds,
+      businessData,
+    }
+
+    setLaunchedCampaigns((prev) => [newCampaign, ...prev])
+    setCurrentStep("final")
+  }
+
   // Show full-width for chat and upload
   const showSidebar = !["chat", "upload"].includes(currentStep)
 
@@ -83,7 +114,15 @@ export default function AdMorphApp() {
       <div className="flex relative z-10">
         {/* Sidebar */}
         {showSidebar && (
-          <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+          <Sidebar
+            isCollapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            launchedCampaigns={launchedCampaigns}
+            onCampaignSelect={(campaignId) => {
+              // Optional: Add functionality to view campaign details
+              console.log("Selected campaign:", campaignId)
+            }}
+          />
         )}
 
         {/* Main Content */}
@@ -154,6 +193,14 @@ export default function AdMorphApp() {
             )}
             {currentStep === "performance" && selectedAdForPerformance && (
               <AdPerformanceDashboard adId={selectedAdForPerformance} onBack={() => setCurrentStep("gallery")} />
+            )}
+            {/* Add a new handler for when tracking is complete */}
+            {currentStep === "tracking" && (
+              <PerformanceTrackingDashboard
+                selectedAds={selectedAds}
+                businessData={businessData}
+                onComplete={handleTrackingComplete}
+              />
             )}
             {currentStep === "final" && (
               <div className="text-center py-16 max-w-4xl mx-auto px-6">

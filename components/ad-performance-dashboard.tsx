@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from "recharts"
 import { TrendingUp, Eye, MousePointer, ShoppingCart, Zap, Brain, MessageSquare } from "lucide-react"
 
 interface AdPerformanceProps {
@@ -20,16 +20,73 @@ interface Mutation {
   impact: string
   status: "active" | "completed"
   explanation: string
+  imageUrl: string
 }
 
 export default function AdPerformanceDashboard({ adId, onBack }: AdPerformanceProps) {
   const [performanceData, setPerformanceData] = useState([
-    { time: "00:00", ctr: 2.1, conversions: 0.8, impressions: 1200 },
-    { time: "04:00", ctr: 2.3, conversions: 1.1, impressions: 1450 },
-    { time: "08:00", ctr: 2.8, conversions: 1.4, impressions: 1800 },
-    { time: "12:00", ctr: 3.2, conversions: 1.8, impressions: 2100 },
-    { time: "16:00", ctr: 3.5, conversions: 2.1, impressions: 2400 },
-    { time: "20:00", ctr: 3.1, conversions: 1.9, impressions: 2200 },
+    {
+      time: "00:00",
+      ctr: 2.1,
+      conversions: 0.8,
+      impressions: 1200,
+      mutation: null,
+    },
+    {
+      time: "04:00",
+      ctr: 2.3,
+      conversions: 1.1,
+      impressions: 1450,
+      mutation: {
+        type: "Color Adjustment",
+        image: "/ad-family-oriented.png",
+        description: "Initial baseline performance",
+      },
+    },
+    {
+      time: "08:00",
+      ctr: 2.8,
+      conversions: 1.4,
+      impressions: 1800,
+      mutation: {
+        type: "Gaming Integration",
+        image: "/ad-gen-z.png",
+        description: "Added Minecraft-style elements",
+      },
+    },
+    {
+      time: "12:00",
+      ctr: 3.2,
+      conversions: 1.8,
+      impressions: 2100,
+      mutation: {
+        type: "Color Psychology",
+        image: "/ad-premium-segment.png",
+        description: "Optimized color scheme",
+      },
+    },
+    {
+      time: "16:00",
+      ctr: 3.5,
+      conversions: 2.1,
+      impressions: 2400,
+      mutation: {
+        type: "Demographic Focus",
+        image: "/ad-young-professional.png",
+        description: "Refined targeting parameters",
+      },
+    },
+    {
+      time: "20:00",
+      ctr: 3.1,
+      conversions: 1.9,
+      impressions: 2200,
+      mutation: {
+        type: "Evening Optimization",
+        image: "/ad-family-oriented.png",
+        description: "Adjusted for evening audience",
+      },
+    },
   ])
 
   const [mutations, setMutations] = useState<Mutation[]>([
@@ -42,6 +99,7 @@ export default function AdPerformanceDashboard({ adId, onBack }: AdPerformancePr
       status: "active",
       explanation:
         "Detected rising trend in sandbox gaming among target demographic. Integrated Minecraft-style visuals to align with current gaming preferences, resulting in improved engagement rates.",
+      imageUrl: "/ad-gen-z.png",
     },
     {
       id: "2",
@@ -52,6 +110,7 @@ export default function AdPerformanceDashboard({ adId, onBack }: AdPerformancePr
       status: "completed",
       explanation:
         "Visual analysis showed purple-blue gradients perform 23% better with our target age group. Updated creative assets to leverage this psychological preference.",
+      imageUrl: "/ad-gen-z.png",
     },
     {
       id: "3",
@@ -62,11 +121,59 @@ export default function AdPerformanceDashboard({ adId, onBack }: AdPerformancePr
       status: "completed",
       explanation:
         "Machine learning identified micro-segments with 3x higher conversion probability. Reallocated budget to focus on these high-value audience clusters.",
+      imageUrl: "/ad-gen-z.png",
     },
   ])
 
   const [currentExplanation, setCurrentExplanation] = useState(mutations[0]?.explanation || "")
   const [isExplaining, setIsExplaining] = useState(false)
+  const [selectedMutation, setSelectedMutation] = useState(null)
+  const [showMutationModal, setShowMutationModal] = useState(false)
+
+  // Live chart animation
+  useEffect(() => {
+    const chartInterval = setInterval(() => {
+      setPerformanceData((prev) => {
+        const newData = [...prev]
+        const lastPoint = newData[newData.length - 1]
+        const now = new Date()
+        const newTime = now.toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+
+        // More realistic performance variations
+        const timeOfDay = now.getHours()
+        const baseMultiplier = timeOfDay >= 9 && timeOfDay <= 17 ? 1.2 : 0.8 // Higher during business hours
+
+        const newPoint = {
+          time: newTime,
+          ctr: Math.max(0.5, lastPoint.ctr + (Math.random() - 0.5) * 0.1 * baseMultiplier),
+          conversions: Math.max(0.1, lastPoint.conversions + (Math.random() - 0.5) * 0.05 * baseMultiplier),
+          impressions: lastPoint.impressions + Math.floor(Math.random() * 50 + 25),
+          mutation:
+            Math.random() > 0.85
+              ? {
+                  type: "Live Optimization",
+                  image: "/ad-premium-segment.png",
+                  description: "Real-time AI adjustment",
+                }
+              : null,
+        }
+
+        // Keep only last 10 points for smoother animation
+        if (newData.length >= 10) {
+          newData.shift()
+        }
+        newData.push(newPoint)
+
+        return newData
+      })
+    }, 1000) // Update every second
+
+    return () => clearInterval(chartInterval)
+  }, [])
 
   useEffect(() => {
     // Simulate real-time explanations
@@ -185,19 +292,109 @@ export default function AdPerformanceDashboard({ adId, onBack }: AdPerformancePr
           ))}
         </div>
 
+        {/* Real-time Engagement Flow Chart */}
+        <Card className="bg-slate-900/40 backdrop-blur-2xl border-slate-700/30 shadow-xl rounded-3xl overflow-hidden mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-800/20 to-purple-900/20" />
+          <CardHeader className="relative">
+            <CardTitle className="text-white text-xl font-semibold flex items-center justify-between">
+              <div className="flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2 text-green-400" />
+                Live Engagement Flow
+                <Badge className="ml-2 bg-green-500/20 text-green-400 text-xs animate-pulse">REAL-TIME</Badge>
+              </div>
+              <div className="flex items-center space-x-2 text-sm">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+                <span className="text-green-400 font-medium">+{Math.floor(Math.random() * 15 + 5)}% growth</span>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="relative">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={performanceData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <defs>
+                  <linearGradient id="engagementGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                <XAxis dataKey="time" stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #10b981",
+                    borderRadius: "12px",
+                    color: "#ffffff",
+                    backdropFilter: "blur(20px)",
+                  }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-slate-900/95 backdrop-blur-xl border border-green-500/30 rounded-2xl p-4 shadow-2xl">
+                          <p className="text-green-300 font-medium mb-2">{`Time: ${label}`}</p>
+                          <p className="text-white text-lg font-bold">{`Engagement: ${Math.floor(payload[0].value as number)}`}</p>
+                          <p className="text-green-400 text-sm">↗ Growing steadily</p>
+                        </div>
+                      )
+                    }
+                    return null
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="ctr"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                  fill="url(#engagementGradient)"
+                  dot={{ fill: "#10b981", strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: "#10b981", strokeWidth: 2, fill: "#ffffff" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+
+            {/* Live Growth Indicators */}
+            <div className="flex justify-between items-center mt-4 px-4">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-green-400 text-sm font-medium">Live Growth</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse delay-300"></div>
+                  <span className="text-blue-400 text-sm font-medium">AI Optimizing</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-white font-bold text-lg">
+                  {Math.floor(performanceData[performanceData.length - 1]?.ctr * 100 || 0)} engagements/min
+                </p>
+                <p className="text-green-400 text-xs">↗ +{Math.floor(Math.random() * 8 + 3)}% vs last hour</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Elegant Performance Chart */}
+          {/* Live Performance Chart */}
           <Card className="bg-slate-900/40 backdrop-blur-2xl border-slate-700/30 shadow-xl rounded-3xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-800/20 to-purple-900/20" />
             <CardHeader className="relative">
-              <CardTitle className="text-white text-xl font-semibold flex items-center">
-                <TrendingUp className="h-5 w-5 mr-2 text-purple-400" />
-                Performance Evolution
+              <CardTitle className="text-white text-xl font-semibold flex items-center justify-between">
+                <div className="flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2 text-purple-400" />
+                  Performance Evolution
+                  <Badge className="ml-2 bg-green-500/20 text-green-400 text-xs animate-pulse">LIVE</Badge>
+                </div>
+                <div className="flex items-center space-x-2 text-sm">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></div>
+                  <span className="text-yellow-400 font-medium">Click mutation points for details</span>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="relative">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={performanceData}>
+              <ResponsiveContainer width="100%" height={350}>
+                <LineChart data={performanceData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                   <XAxis dataKey="time" stroke="#94a3b8" />
                   <YAxis stroke="#94a3b8" />
@@ -209,15 +406,101 @@ export default function AdPerformanceDashboard({ adId, onBack }: AdPerformancePr
                       color: "#ffffff",
                       backdropFilter: "blur(20px)",
                     }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload
+                        return (
+                          <div className="bg-slate-900/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-4 shadow-2xl">
+                            <p className="text-purple-300 font-medium mb-2">{`Time: ${label}`}</p>
+                            <p className="text-green-400">{`CTR: ${payload[0].value}%`}</p>
+                            <p className="text-blue-400">{`Conversions: ${payload[1]?.value}%`}</p>
+                            {data.mutation && (
+                              <div className="mt-3 pt-3 border-t border-slate-600">
+                                <p className="text-yellow-400 font-medium text-sm">{data.mutation.type}</p>
+                                <p className="text-slate-300 text-xs">{data.mutation.description}</p>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
                   />
-                  <Line type="monotone" dataKey="ctr" stroke="#a855f7" name="CTR %" strokeWidth={3} />
-                  <Line type="monotone" dataKey="conversions" stroke="#10b981" name="Conversion %" strokeWidth={3} />
+                  <Line
+                    type="monotone"
+                    dataKey="ctr"
+                    stroke="#a855f7"
+                    name="CTR %"
+                    strokeWidth={3}
+                    dot={(props) => {
+                      const { cx, cy, payload } = props
+                      return (
+                        <g>
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={payload.mutation ? 8 : 4}
+                            fill={payload.mutation ? "#fbbf24" : "#a855f7"}
+                            stroke={payload.mutation ? "#f59e0b" : "#a855f7"}
+                            strokeWidth={2}
+                            className={payload.mutation ? "animate-pulse cursor-pointer" : "cursor-pointer"}
+                            onClick={() => {
+                              if (payload.mutation) {
+                                setSelectedMutation(payload.mutation)
+                                setShowMutationModal(true)
+                              }
+                            }}
+                          />
+                          {payload.mutation && (
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={12}
+                              fill="none"
+                              stroke="#fbbf24"
+                              strokeWidth={1}
+                              className="animate-ping opacity-75"
+                            />
+                          )}
+                        </g>
+                      )
+                    }}
+                    activeDot={{ r: 6, stroke: "#a855f7", strokeWidth: 2 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="conversions"
+                    stroke="#10b981"
+                    name="Conversion %"
+                    strokeWidth={3}
+                    dot={(props) => {
+                      const { cx, cy, payload } = props
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={payload.mutation ? 8 : 4}
+                          fill={payload.mutation ? "#fbbf24" : "#10b981"}
+                          stroke={payload.mutation ? "#f59e0b" : "#10b981"}
+                          strokeWidth={2}
+                          className={payload.mutation ? "animate-pulse cursor-pointer" : "cursor-pointer"}
+                          onClick={() => {
+                            if (payload.mutation) {
+                              setSelectedMutation(payload.mutation)
+                              setShowMutationModal(true)
+                            }
+                          }}
+                        />
+                      )
+                    }}
+                    activeDot={{ r: 6, stroke: "#10b981", strokeWidth: 2 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* Elegant Mutation Tracker */}
+          {/* Mutation Tracker with Images */}
           <Card className="bg-slate-900/40 backdrop-blur-2xl border-slate-700/30 shadow-xl rounded-3xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-800/20 to-purple-900/20" />
             <CardHeader className="relative">
@@ -233,28 +516,35 @@ export default function AdPerformanceDashboard({ adId, onBack }: AdPerformancePr
                     key={mutation.id}
                     className="p-4 bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-600/30 transition-all duration-300 hover:bg-slate-700/50"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            mutation.status === "active" ? "bg-green-400 animate-pulse" : "bg-slate-500"
-                          }`}
-                        />
-                        <div>
-                          <p className="font-semibold text-white">{mutation.type}</p>
-                          <p className="text-sm text-slate-400">{mutation.description}</p>
-                          <p className="text-xs text-slate-500 mt-1">{mutation.timestamp}</p>
+                    <div className="flex items-start space-x-4">
+                      <img
+                        src={mutation.imageUrl || "/ad-gen-z.png"}
+                        alt={mutation.type}
+                        className="w-16 h-12 object-cover rounded-lg border border-slate-600/50"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className={`w-3 h-3 rounded-full ${
+                                mutation.status === "active" ? "bg-green-400 animate-pulse" : "bg-slate-500"
+                              }`}
+                            />
+                            <p className="font-semibold text-white text-sm">{mutation.type}</p>
+                          </div>
+                          <Badge
+                            className={`${
+                              mutation.status === "active"
+                                ? "bg-green-500/20 text-green-400 border-green-500/30"
+                                : "bg-slate-600/20 text-slate-300 border-slate-600/30"
+                            } rounded-full px-2 py-1 text-xs`}
+                          >
+                            {mutation.impact}
+                          </Badge>
                         </div>
+                        <p className="text-xs text-slate-400 mb-1">{mutation.description}</p>
+                        <p className="text-xs text-slate-500">{mutation.timestamp}</p>
                       </div>
-                      <Badge
-                        className={`${
-                          mutation.status === "active"
-                            ? "bg-green-500/20 text-green-400 border-green-500/30"
-                            : "bg-slate-600/20 text-slate-300 border-slate-600/30"
-                        } rounded-full px-3 py-1`}
-                      >
-                        {mutation.impact}
-                      </Badge>
                     </div>
                   </div>
                 ))}
@@ -293,6 +583,35 @@ export default function AdPerformanceDashboard({ adId, onBack }: AdPerformancePr
             </div>
           </CardContent>
         </Card>
+        {/* Mutation Detail Modal */}
+        {showMutationModal && selectedMutation && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <Card className="bg-slate-900/95 backdrop-blur-xl border-purple-500/30 rounded-3xl p-8 max-w-md mx-4 shadow-2xl">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <Zap className="h-10 w-10 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">{selectedMutation.type}</h3>
+
+                <div className="mb-6">
+                  <img
+                    src={selectedMutation.image || "/ad-gen-z.png"}
+                    alt={selectedMutation.type}
+                    className="w-full h-32 object-cover rounded-xl border border-slate-600/50 mb-4"
+                  />
+                  <p className="text-slate-300 text-sm leading-relaxed">{selectedMutation.description}</p>
+                </div>
+
+                <Button
+                  onClick={() => setShowMutationModal(false)}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl px-8 py-2"
+                >
+                  Close
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -196,7 +196,7 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
         {/* Step-by-step at the top */}
         <div className="mb-20">
           <div className="flex justify-center">
-            <div className="flex items-center space-x-8">
+            <div className="grid grid-cols-5 gap-8 max-w-2xl w-full">
               {agentSteps.map((step, index) => (
                 <div key={step.id} className="flex flex-col items-center">
                   <div
@@ -216,7 +216,7 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
                       <span className="text-sm font-bold">{index + 1}</span>
                     )}
                   </div>
-                  <p className="text-sm text-slate-400 mt-3 font-medium">{step.name}</p>
+                  <p className="text-sm text-slate-400 mt-3 font-medium text-center">{step.name}</p>
                 </div>
               ))}
             </div>

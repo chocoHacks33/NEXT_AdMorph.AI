@@ -127,62 +127,68 @@ export default function ProcessingPanel({ businessData }: ProcessingPanelProps) 
         {/* Enhanced Agent Workflow Nodes */}
         <div className="mb-20">
           <div className="flex justify-center">
-            <div className="flex items-center space-x-6 max-w-5xl overflow-x-auto pb-4">
-              {agentStates.map((agent, i) => (
-                <div key={agent.id} className="flex flex-col items-center min-w-0 relative">
-                  {/* Enhanced Connection Line */}
-                  {i > 0 && (
+            <div className="relative max-w-5xl w-full">
+              {/* Connection Lines */}
+              <div className="absolute top-10 left-0 right-0 h-1 flex items-center justify-between px-10">
+                {agentStates.slice(0, -1).map((agent, i) => (
+                  <div
+                    key={`line-${i}`}
+                    className={`
+              h-1 rounded-full transition-all duration-500 flex-1 mx-10
+              ${
+                agent.status === "completed"
+                  ? "bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 shadow-lg shadow-purple-500/25"
+                  : "bg-slate-700"
+              }
+            `}
+                  />
+                ))}
+              </div>
+
+              {/* Nodes Grid - Perfect Alignment */}
+              <div className="grid grid-cols-5 gap-8 items-start">
+                {agentStates.map((agent, i) => (
+                  <div key={agent.id} className="flex flex-col items-center">
+                    {/* Enhanced Agent Node */}
                     <div
                       className={`
-                      w-16 h-1 mb-8 -ml-20 mt-8 rounded-full transition-all duration-500
-                      ${
-                        agentStates[i - 1].status === "completed"
-                          ? "bg-gradient-to-r from-green-400 via-blue-500 to-purple-500 shadow-lg shadow-purple-500/25"
-                          : "bg-slate-700"
-                      }
-                    `}
-                    />
-                  )}
-
-                  {/* Enhanced Agent Node */}
-                  <div
-                    className={`
-                    w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-500 mb-4 shadow-2xl
-                    ${
-                      agent.status === "completed"
-                        ? "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 text-white scale-110 shadow-green-500/25"
-                        : agent.status === "active"
-                          ? "bg-gradient-to-r from-pink-500 via-purple-600 to-blue-600 text-white animate-pulse scale-110 shadow-purple-500/25"
-                          : "bg-slate-800/50 text-slate-500 backdrop-blur-sm border border-slate-700/50"
-                    }
-                  `}
-                  >
-                    {agent.status === "completed" ? (
-                      <CheckCircle className="h-8 w-8" />
-                    ) : agent.status === "active" ? (
-                      <Loader2 className="h-8 w-8 animate-spin" />
-                    ) : (
-                      agent.icon
-                    )}
-                  </div>
-
-                  {/* Enhanced Agent Info */}
-                  <div className="text-center max-w-36">
-                    <p
-                      className={`text-base font-bold mb-2 ${
-                        agent.status === "active"
-                          ? "text-pink-400"
-                          : agent.status === "completed"
-                            ? "text-green-400"
-                            : "text-slate-500"
-                      }`}
+                w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-500 mb-4 shadow-2xl
+                ${
+                  agent.status === "completed"
+                    ? "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 text-white scale-110 shadow-green-500/25"
+                    : agent.status === "active"
+                      ? "bg-gradient-to-r from-pink-500 via-purple-600 to-blue-600 text-white animate-pulse scale-110 shadow-purple-500/25"
+                      : "bg-slate-800/50 text-slate-500 backdrop-blur-sm border border-slate-700/50"
+                }
+              `}
                     >
-                      {agent.name}
-                    </p>
-                    <p className="text-xs text-slate-400 leading-tight">{agent.description}</p>
+                      {agent.status === "completed" ? (
+                        <CheckCircle className="h-8 w-8" />
+                      ) : agent.status === "active" ? (
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      ) : (
+                        agent.icon
+                      )}
+                    </div>
+
+                    {/* Enhanced Agent Info */}
+                    <div className="text-center max-w-36">
+                      <p
+                        className={`text-base font-bold mb-2 ${
+                          agent.status === "active"
+                            ? "text-pink-400"
+                            : agent.status === "completed"
+                              ? "text-green-400"
+                              : "text-slate-500"
+                        }`}
+                      >
+                        {agent.name}
+                      </p>
+                      <p className="text-xs text-slate-400 leading-tight">{agent.description}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
