@@ -61,6 +61,21 @@ NEXT_PUBLIC_NODE_ENV=development
 NEXT_PUBLIC_VOICE_ENABLED=true
 NEXT_PUBLIC_CHAT_ENABLED=true
 NEXT_PUBLIC_ANALYTICS_ENABLED=true
+
+# Voice Model Selection
+NEXT_PUBLIC_VOICE_MODEL=openai  # Options: openai, elevenlabs, dia
+
+# OpenAI Voice Integration (Default)
+NEXT_PUBLIC_OPENAI_API_KEY=your-openai-api-key-here
+
+# Eleven Labs Voice Integration
+NEXT_PUBLIC_ELEVENLABS_API_KEY=your-elevenlabs-api-key-here
+NEXT_PUBLIC_ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM  # Optional, defaults to Rachel
+NEXT_PUBLIC_ELEVENLABS_MODEL=eleven_turbo_v2           # Optional
+
+# Dia Model (Open Source - requires local server)
+NEXT_PUBLIC_DIA_API_URL=http://localhost:7860/api
+NEXT_PUBLIC_DIA_SALES_CALL_STYLE=true
 ```
 
 ### Environment Files
@@ -116,6 +131,76 @@ pnpm export           # Export static files
    ```bash
    pnpm build
    ```
+
+## Voice Integration
+
+This project supports multiple voice providers for high-quality TTS with automatic fallback to native browser speech synthesis.
+
+### Voice Provider Options
+
+1. **OpenAI TTS** (Default): High-quality, natural-sounding voices with dialogue support
+2. **Eleven Labs**: Professional voice synthesis with multiple voice options
+3. **Dia**: Open-source voice model with interview/sales call style dialogue support
+4. **Browser Native**: Fallback speech synthesis for all providers
+
+### OpenAI Voice Integration
+
+This project uses OpenAI's Text-to-Speech API for natural voice synthesis with dialogue support:
+
+1. **Sales Call Style**: Alternates between two voices for natural dialogue flow
+2. **Multiple Voice Options**: Several high-quality voices (Nova, Onyx, Alloy, etc.)
+3. **Fallback**: Automatically falls back to browser speech synthesis if API unavailable
+
+### Eleven Labs Voice Integration
+
+Alternative voice provider with professional voice synthesis:
+
+1. **Text-to-Speech (TTS)**: Uses Eleven Labs API for high-quality voice narration
+2. **Voice Recording**: Captures microphone input for transcription
+3. **Speech Recognition**: Transcribes voice to text using browser APIs with fallback mechanisms
+
+#### Setup Instructions
+
+1. Get an API key from [Eleven Labs](https://elevenlabs.io)
+2. Configure the environment variables in `.env.local` as shown in the [Environment Variables](#environment-setup) section
+3. Test the integration by enabling voice features in the UI
+
+#### Available Voice Features
+
+- Voice narration of questions with toggle controls
+- Microphone recording with audio level visualization
+- Voice command recognition for controlling the campaign creation flow
+- Fallback mechanisms for browsers without speech recognition support
+
+#### Voice Configuration
+
+You can customize voice settings in `lib/config.ts` and `lib/elevenlabs.ts`. Available options include:
+
+- Different voice personalities (Rachel, Josh, Adam, etc.)
+- Voice stability and similarity boost parameters
+- Model selection for text-to-speech quality
+
+### Dia Voice Integration
+
+Open source alternative for sales call style dialogue:
+
+1. **Dialogue Style**: Uses speaker tags ([S1], [S2]) to create natural interview-style conversations
+2. **Local Deployment**: Can be run locally without API key requirements
+3. **Sales Call Format**: Specially designed for sales call scenarios
+
+#### Implementation Files
+
+- `lib/elevenlabs.ts` - Eleven Labs API service
+- `lib/dia.ts` - Dia voice model service
+- `lib/openai.ts` - OpenAI TTS service
+- `lib/hooks/useVoice.ts` - Unified voice provider hook
+- `lib/hooks/useTextToSpeech.ts` - Eleven Labs-specific hook
+- `lib/hooks/useDialogueSpeech.ts` - Dia-specific hook
+- `lib/hooks/useOpenAISpeech.ts` - OpenAI-specific hook
+- `lib/hooks/useVoiceRecorder.ts` - React hook for microphone recording
+- `lib/speech-recognition.ts` - Browser speech recognition service
+- `components/voice-interface.tsx` - Main voice interaction component
+- `components/voice-agent-narrator.tsx` - Voice narration component
 
 ## Backend Integration
 

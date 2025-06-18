@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Volume2, VolumeX, Mic } from "lucide-react"
+import useVoice from "@/lib/hooks/useVoice"
+import { VOICE_IDS } from "@/lib/elevenlabs"
 
 interface VoiceAgentNarratorProps {
   currentStep: number
@@ -25,37 +27,81 @@ export default function VoiceAgentNarrator({
   onVoiceCommand,
 }: VoiceAgentNarratorProps) {
   const [isListening, setIsListening] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
+  
+  // Use our unified voice hook that supports both Eleven Labs and Dia
+  const {
+    isSpeaking,
+    speak,
+    stop: stopSpeaking,
+    error: voiceError
+  } = useVoice()
 
-  const narrateStep = (step: any) => {
-    if (!isEnabled || !("speechSynthesis" in window)) return
-
-    setIsSpeaking(true)
-    const utterance = new SpeechSynthesisUtterance(
-      `Now ${step.description.toLowerCase()}. This helps ensure your ad resonates with the right audience.`,
-    )
-
-    utterance.rate = 0.9
-    utterance.pitch = 1.1
-    utterance.volume = 0.7
-
-    utterance.onend = () => {
-      setIsSpeaking(false)
+  const narrateStep = async (step: any) => {
+    if (!isEnabled) return
+    
+    try {
+      const narrateText = `Now ${step.description.toLowerCase()}. This helps ensure your ad resonates with the right audience.`;
+      await speak({ text: narrateText });
+    } catch (error) {
+      console.error('Error with narration:', error);
+      // Fall back to native speech synthesis if there's an error
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(
+          `Now ${step.description.toLowerCase()}. This helps ensure your ad resonates with the right audience.`,
+        );
+        utterance.rate = 0.9;
+        utterance.pitch = 1.1;
+        utterance.volume = 0.7;
+        speechSynthesis.speak(utterance);
+      }
     }
-
-    speechSynthesis.speak(utterance)
   }
 
   const startVoiceCommands = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+    }
+    
     setIsListening(true)
-
-    // Simulate voice recognition for commands
-    setTimeout(() => {
-      const commands = ["like this ad", "skip this one", "regenerate", "tell me more"]
-      const randomCommand = commands[Math.floor(Math.random() * commands.length)]
-      onVoiceCommand(randomCommand)
-      setIsListening(false)
-    }, 2000)
+    
+    // Start listening for voice commands using the browser's speech recognition
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        onVoiceCommand(transcript);
+        setIsListening(false);
+      };
+      
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognition.start();
+      
+      // Fallback timeout in case recognition doesn't end properly
+      setTimeout(() => {
+        setIsListening(false);
+      }, 5000);
+    } else {
+      // Fallback for browsers that don't support speech recognition
+      setTimeout(() => {
+        const commands = ["like this ad", "skip this one", "regenerate", "tell me more"];
+        const randomCommand = commands[Math.floor(Math.random() * commands.length)];
+        onVoiceCommand(randomCommand);
+        setIsListening(false);
+      }, 2000);
+    }
   }
 
   useEffect(() => {
@@ -63,6 +109,8 @@ export default function VoiceAgentNarrator({
     if (activeStep && isEnabled) {
       setTimeout(() => narrateStep(activeStep), 500)
     }
+    // narrateStep contains 'speak' which changes on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, agentSteps, isEnabled])
 
   return (

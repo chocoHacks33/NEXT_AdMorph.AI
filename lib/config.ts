@@ -18,6 +18,11 @@ export const config = {
     chatEnabled: process.env.NEXT_PUBLIC_CHAT_ENABLED !== 'false',
     analyticsEnabled: process.env.NEXT_PUBLIC_ANALYTICS_ENABLED !== 'false',
   },
+  elevenlabs: {
+    apiKey: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY || '',
+    defaultVoiceId: process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM', // Rachel voice as default
+    defaultModel: process.env.NEXT_PUBLIC_ELEVENLABS_MODEL || 'eleven_turbo_v2',
+  },
 };
 
 export const isDevelopment = config.app.environment === 'development';

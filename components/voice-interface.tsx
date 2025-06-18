@@ -1,9 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Mic, MicOff, Upload, SkipBackIcon as Skip, ArrowRight, CheckCircle, Loader2, Sparkles } from "lucide-react"
+import { Mic, MicOff, Upload, SkipBackIcon as Skip, ArrowRight, CheckCircle, Loader2, Sparkles, Volume2, VolumeX } from "lucide-react"
+import useVoiceRecorder from "@/lib/hooks/useVoiceRecorder"
+import useVoice from "@/lib/hooks/useVoice"
+import speechRecognition from "@/lib/speech-recognition"
 
 interface BusinessData {
   targetEngagement: string
@@ -36,6 +39,32 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
     audience: "",
     themes: [],
   })
+  const [isNarrationEnabled, setIsNarrationEnabled] = useState(true)
+  
+  // Voice recorder hook
+  const {
+    isRecording,
+    isPermissionGranted,
+    audioUrl,
+    start: startRecording,
+    stop: stopRecording,
+    reset: resetRecording,
+  } = useVoiceRecorder({
+    onAudioLevels: setAudioLevels,
+    onStop: (audioUrl, blob) => {
+      // Here we would normally send the blob to a transcription service
+      // For now we'll simulate it with a timeout
+      handleRecordingComplete();
+    },
+  })
+  
+  // Unified voice system hook (supports both Eleven Labs and Dia)
+  const {
+    isSpeaking,
+    speak,
+    stop: stopSpeaking,
+    error: voiceError
+  } = useVoice()
 
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([
     { id: "1", name: "Requirements", status: "pending" },
@@ -45,13 +74,42 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
     { id: "5", name: "Ready", status: "pending" },
   ])
 
-  const questions = [
-    "What's your target engagement goal?",
-    "What's your advertising budget?",
-    "Who is your target audience?",
-    "What themes should we maintain?",
-    "Ready to generate your ads?",
+  // Enhanced sales conversation with more natural, engaging dialogue
+  const conversationFlow = [
+    {
+      id: "intro",
+      agent: "Hi there! I'm Emma from AdMorph AI. I help businesses create more effective advertising campaigns. I'd love to learn about your goals so we can craft the perfect ad strategy for you. What specific engagement metrics are you hoping to improve with your next campaign?",
+      shortPrompt: "What's your target engagement goal?",
+      expectedResponseType: "engagement",
+    },
+    {
+      id: "budget",
+      agent: "That's a great goal! To help us tailor our recommendations, could you share what kind of monthly budget you're working with for this campaign?",
+      shortPrompt: "What's your advertising budget?",
+      expectedResponseType: "budget",
+    },
+    {
+      id: "audience",
+      agent: "Perfect, thanks for sharing that. Now, let's make sure we're targeting the right people. Could you tell me a bit about your ideal customer? Who are you trying to reach with these ads?",
+      shortPrompt: "Who is your target audience?",
+      expectedResponseType: "audience",
+    },
+    {
+      id: "themes",
+      agent: "That's exactly the information we need! Now I have one more question about your brand style. Are there specific themes, colors, or messaging elements you'd like to maintain across all your ad creative?",
+      shortPrompt: "What themes should we maintain?",
+      expectedResponseType: "themes",
+    },
+    {
+      id: "finalize",
+      agent: "Fantastic! Based on everything you've shared, we have all we need to create a campaign that will really resonate with your audience. Would you like us to generate some ad concepts for you now?",
+      shortPrompt: "Ready to generate your ads?",
+      expectedResponseType: "confirmation",
+    },
   ]
+  
+  // Simplified access to just the questions when needed
+  const questions = conversationFlow.map(item => item.shortPrompt)
 
   // Skip to processing
   const handleSkipVoice = () => {
@@ -64,35 +122,38 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
     onComplete(defaultData)
   }
 
-  // Generate waveform
+  // Generate waveform with more natural voice-like patterns
   const generateWaveform = () => {
-    return Array.from({ length: 20 }, () => Math.random() * 40 + 5)
+    // Create a more natural voice pattern with higher middle values
+    const baseValues = Array.from({ length: 20 }, (_, i) => {
+      // Create a bell curve effect with higher values in the middle
+      const distFromCenter = Math.abs(i - 10)
+      const base = 30 - distFromCenter * 2
+      // Add some randomness
+      return base + (Math.random() * 15)
+    })
+    
+    return baseValues
   }
 
-  // Start listening
-  const startListening = () => {
-    setVoiceState("listening")
-    setCurrentTranscript("")
+  // Handle recording completion and process transcription
+  const handleRecordingComplete = () => {
+    setVoiceState("processing")
+    
+    // Update agent step
+    setAgentSteps((prev) =>
+      prev.map((step, index) => ({
+        ...step,
+        status: index === currentStep ? "active" : index < currentStep ? "completed" : "pending",
+      })),
+    )
 
-    const interval = setInterval(() => {
-      setAudioLevels(generateWaveform())
-    }, 150)
-
+    // We'll rely on real transcription or the mock transcription service
+    // Show a loading state briefly to simulate processing
     setTimeout(() => {
-      setVoiceState("processing")
-      clearInterval(interval)
-      setAudioLevels(new Array(20).fill(5))
-
-      // Update agent step
-      setAgentSteps((prev) =>
-        prev.map((step, index) => ({
-          ...step,
-          status: index === currentStep ? "active" : index < currentStep ? "completed" : "pending",
-        })),
-      )
-
-      setTimeout(() => {
-        const mockResponses = [
+      // If no transcript was received yet, use a fallback
+      if (!currentTranscript) {
+        const fallbackResponses = [
           "Increase click-through rate by 25%",
           "$8,000 per month",
           "Young professionals aged 25-35",
@@ -100,60 +161,186 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
           "Yes, let's generate!",
         ]
 
-        const response = mockResponses[currentStep] || "Ready"
-        setCurrentTranscript(response)
-        handleVoiceInput(response)
-      }, 1500)
-    }, 3000)
+        const fallbackResponse = fallbackResponses[currentStep] || "Ready"
+        setCurrentTranscript(fallbackResponse)
+        handleVoiceInput(fallbackResponse)
+      } else {
+        // Use the transcript that was already captured during listening
+        handleVoiceInput(currentTranscript)
+      }
+    }, 1000)
+  }
+
+  // Start listening with real recording
+  const startListening = async () => {
+    setVoiceState("listening")
+    setCurrentTranscript("")
+    
+    try {
+      if (speechRecognition && speechRecognition.isSupported()) {
+        speechRecognition.start({
+          continuous: true,
+          interimResults: true,
+          lang: "en-US",
+          onResult: (transcript, isFinal) => {
+            // Update state with the latest transcript
+            setCurrentTranscript(transcript)
+            
+            // Visual feedback as user speaks
+            const levels = generateWaveform()
+            setAudioLevels(levels)
+            
+            if (isFinal) {
+              stopListening()
+            }
+          },
+          onError: (error) => {
+            console.error("Speech recognition error:", error)
+            stopListening()
+          }
+        })
+      } else {
+        // Fallback - start recording via basic voice recorder
+        startRecording()
+      }
+    } catch (error) {
+      console.error("Error starting speech recognition:", error)
+      // Fallback to simple recording
+      startRecording()
+    }
   }
 
   const handleVoiceInput = (transcript: string) => {
+    // Store the response in the appropriate field based on current step
     const updatedData = { ...businessData }
+    
+    // Process voice response based on current step
     switch (currentStep) {
-      case 0:
+      case 0: // Target Engagement
         updatedData.targetEngagement = transcript
         break
-      case 1:
+        
+      case 1: // Budget
         updatedData.budget = transcript
         break
-      case 2:
+        
+      case 2: // Audience
         updatedData.audience = transcript
         break
-      case 3:
-        updatedData.themes = transcript.split(",").map((t) => t.trim())
+        
+      case 3: // Themes
+        updatedData.themes = transcript.split(",").map(theme => theme.trim())
         break
+        
+      case 4: // Final confirmation
+        // Add acknowledgment response
+        setTimeout(() => {
+          // Final acknowledgment before completing
+          if (isNarrationEnabled) {
+            speak({ 
+              text: "Excellent! I'll create some amazing ad concepts based on your requirements. Let's make your campaign a success!"
+            })
+          }
+          
+          // Wait for voice to finish before completing
+          setTimeout(() => {
+            onComplete(updatedData)
+          }, 3000)
+        }, 500)
+        return
     }
+    
     setBusinessData(updatedData)
-
-    // Mark current step as completed
-    setAgentSteps((prev) =>
+    
+    // Update the agent steps
+    setAgentSteps(prev => 
       prev.map((step, index) => ({
         ...step,
-        status: index <= currentStep ? "completed" : "pending",
-      })),
+        status: index === currentStep ? "completed" : 
+                index === currentStep + 1 ? "active" : 
+                index < currentStep ? "completed" : "pending"
+      }))
     )
-
-    if (currentStep < questions.length - 1) {
-      setCurrentStep((prev) => prev + 1)
+    
+    // Provide confirmation of the user's answer before moving to next question
+    const confirmationResponses = [
+      `Great! A ${updatedData.targetEngagement} goal is ambitious but achievable with the right strategy.`,
+      `Perfect! A budget of ${updatedData.budget} will give us good flexibility for your campaign.`,
+      `Excellent! We'll make sure your ads really connect with ${updatedData.audience}.`,
+      `Those are fantastic themes to work with! We'll make sure your brand identity shines through.`,
+    ]
+    
+    if (isNarrationEnabled && currentStep < 4) {
+      // Speak confirmation of current answer
       setTimeout(() => {
-        setVoiceState("idle")
-        setCurrentTranscript("")
-      }, 1000)
-    } else {
-      setTimeout(() => {
-        onComplete(updatedData)
-      }, 2000)
+        speak({ text: confirmationResponses[currentStep] })
+      }, 500)
     }
+    
+    // Move to next step after acknowledgment
+    setTimeout(() => {
+      setCurrentStep(prevStep => prevStep + 1)
+      setVoiceState("idle")
+      setCurrentTranscript("")
+      
+      // Speak the next question after a delay for a more natural conversation flow
+      setTimeout(() => {
+        speakQuestion(currentStep + 1)
+      }, 1500) // Longer delay for more natural conversation pace
+    }, 3500) // Wait longer to allow for confirmation speech
   }
 
   const stopListening = () => {
     setVoiceState("idle")
+    stopRecording()
+    if (speechRecognition && speechRecognition.isSupported()) {
+      speechRecognition.stop()
+    }
     setAudioLevels(new Array(20).fill(5))
   }
 
+  // Speak the current part of the conversation using the configured voice system
+  const speakQuestion = useCallback((stepIndex: number) => {
+    if (isNarrationEnabled && conversationFlow[stepIndex]) {
+      // Use the full conversational prompt instead of just the short question
+      speak({ text: conversationFlow[stepIndex].agent })
+    }
+  }, [isNarrationEnabled, conversationFlow, speak])
+
+  // Toggle narration on/off
+  const toggleNarration = () => {
+    if (isSpeaking) {
+      stopSpeaking()
+    }
+    setIsNarrationEnabled(!isNarrationEnabled)
+  }
+
+  // Effect to initialize audio levels
   useEffect(() => {
     setAudioLevels(new Array(20).fill(5))
   }, [])
+  
+  // Track initial render using ref to prevent repeated execution
+  const initialRender = useRef(true);
+  
+  // Separate effect to speak questions without causing infinite loops
+  useEffect(() => {
+    // Only run on initial render
+    if (initialRender.current && currentStep === 0 && isNarrationEnabled) {
+      initialRender.current = false;
+      
+      // Use a timeout to delay initial speech
+      const timer = setTimeout(() => {
+        // Call speak directly to avoid dependencies
+        if (questions[0]) {
+          speak({ text: questions[0] });
+        }
+      }, 1000);
+      
+      // Cleanup timer on unmount
+      return () => clearTimeout(timer);
+    }
+  }, []) // Empty dependency array - only run once on mount
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 relative overflow-hidden">
@@ -191,6 +378,22 @@ export default function VoiceInterface({ onComplete }: VoiceInterfaceProps) {
           </h1>
           <p className="text-xl text-purple-300 font-medium">Voice setup for your campaign</p>
           <p className="text-slate-400 mt-2">Every audience. One engine.</p>
+          
+          {/* Voice AI Narration Control */}
+          <div className="mt-4 inline-flex items-center gap-2 bg-slate-800/50 backdrop-blur-sm rounded-full px-4 py-2 border border-slate-700/50">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={toggleNarration}
+              className={`rounded-full ${isNarrationEnabled ? 'text-purple-400' : 'text-slate-500'}`}
+            >
+              {isNarrationEnabled ? 
+                <Volume2 className={`h-4 w-4 ${isSpeaking ? 'animate-pulse' : ''}`} /> : 
+                <VolumeX className="h-4 w-4" />
+              }
+            </Button>
+            <span className="text-xs text-slate-400">{isNarrationEnabled ? 'AI Voice Active' : 'AI Voice Off'}</span>
+          </div>
         </div>
 
         {/* Step-by-step at the top */}

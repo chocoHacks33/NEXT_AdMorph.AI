@@ -11,8 +11,9 @@ const nextConfig = {
     domains: ['localhost', 's3.amazonaws.com'],
   },
   output: 'standalone',
+  outputFileTracingRoot: process.cwd(),
   experimental: {
-    outputFileTracingRoot: process.cwd(),
+    // Add other experimental features here
   },
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
