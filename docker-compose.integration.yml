@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000/api
+      - NEXT_PUBLIC_WS_URL=ws://backend:8000/ws
+    depends_on:
+      - backend
+    networks:
+      - admorph-network
+
+  backend:
+    image: admorph-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - ADMORPH_ENVIRONMENT=production
+      - ADMORPH_HOST=0.0.0.0
+      - ADMORPH_PORT=8000
+      - ADMORPH_ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - META_ACCESS_TOKEN=${META_ACCESS_TOKEN}
+      - META_APP_ID=${META_APP_ID}
+      - META_APP_SECRET=${META_APP_SECRET}
+      - META_AD_ACCOUNT_ID=${META_AD_ACCOUNT_ID}
+    volumes:
+      - backend-uploads:/app/uploads
+      - backend-logs:/app/logs
+    networks:
+      - admorph-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - admorph-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=admorph
+      - POSTGRES_USER=admorph
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-admorph_password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - admorph-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admorph"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  admorph-network:
+    driver: bridge
+
+volumes:
+  backend-uploads:
+  backend-logs:
+  redis-data:
+  postgres-data:
